@@ -7,39 +7,6 @@ import bs58 from 'bs58';
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
 /**
- * Initialize Jupiter instance
- * @param {Connection} connection - Solana connection
- * @returns {Promise<Object>} - Jupiter instance
- */
-export async function initJupiter(connection) {
-  try {
-    // Create Jupiter API client
-    const jupiterQuoteApi = JupiterApi.QuoteApi(
-      'https://quote-api.jup.ag/v6',
-      {
-        // Optional: Add any configuration options here
-      }
-    );
-    
-    const jupiterSwapApi = JupiterApi.SwapApi(
-      'https://swap-api.jup.ag/v6',
-      {
-        // Optional: Add any configuration options here
-      }
-    );
-    
-    return {
-      quoteApi: jupiterQuoteApi,
-      swapApi: jupiterSwapApi,
-      connection
-    };
-  } catch (error) {
-    console.error('Failed to initialize Jupiter:', error);
-    throw error;
-  }
-}
-
-/**
  * Swap tokens using Jupiter - THIS EXECUTES REAL SWAPS ON THE BLOCKCHAIN
  * @param {Connection} connection - Solana connection
  * @param {Object} keypair - Solana keypair
@@ -50,9 +17,6 @@ export async function swapWithJupiter(connection, keypair, params) {
   try {
     console.log('Executing REAL Jupiter swap with params:', params);
     
-    // Initialize Jupiter
-    const jupiter = await initJupiter(connection);
-    
     // Determine input and output tokens based on buy/sell
     const inputMint = params.isBuy ? SOL_MINT : params.tokenMint;
     const outputMint = params.isBuy ? params.tokenMint : SOL_MINT;
@@ -62,8 +26,13 @@ export async function swapWithJupiter(connection, keypair, params) {
     
     console.log(`Swapping ${params.amount} SOL (${amountInLamports} lamports) from ${inputMint} to ${outputMint}`);
     
+    // Create Jupiter API clients
+    const quoteApi = JupiterApi.QuoteApi();
+    const swapApi = JupiterApi.SwapApi();
+    
     // Get quote from Jupiter
-    const quoteResponse = await jupiter.quoteApi.getQuote({
+    console.log('Getting quote from Jupiter...');
+    const quoteResponse = await quoteApi.getQuote({
       inputMint,
       outputMint,
       amount: amountInLamports.toString(),
@@ -79,7 +48,8 @@ export async function swapWithJupiter(connection, keypair, params) {
     console.log('Quote received:', quoteResponse.data);
     
     // Get the swap transaction
-    const swapResponse = await jupiter.swapApi.getSwapTransaction({
+    console.log('Getting swap transaction...');
+    const swapResponse = await swapApi.getSwapTransaction({
       quoteResponse: quoteResponse.data,
       userPublicKey: keypair.publicKey.toString(),
       wrapAndUnwrapSol: true,
@@ -135,10 +105,11 @@ export async function swapWithJupiter(connection, keypair, params) {
  */
 export async function getTokenPrice(connection, tokenMint) {
   try {
-    const jupiter = await initJupiter(connection);
+    // Create Jupiter Quote API client
+    const quoteApi = JupiterApi.QuoteApi();
     
     // Get price as quote
-    const quoteResponse = await jupiter.quoteApi.getQuote({
+    const quoteResponse = await quoteApi.getQuote({
       inputMint: tokenMint,
       outputMint: SOL_MINT,
       amount: "1000000000", // 1 token in smallest units

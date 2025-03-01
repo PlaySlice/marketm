@@ -116,35 +116,44 @@ async function executeTradeLoop(connection, keypair, botState, onCycleComplete, 
     
     console.log(`Executing trade cycle ${botState.cyclesCompleted + 1} for wallet ${botState.wallet.publicKey.slice(0, 8)}...`);
     
-    // Execute buy transaction using Jupiter - THIS EXECUTES A REAL SWAP
-    const buyResult = await swapWithJupiter(connection, keypair, {
-      tokenMint: botState.tokenMint,
-      amount,
-      isBuy: true,
-    });
-    
-    botState.transactions.push(buyResult);
-    
-    // Wait a bit between transactions
-    await new Promise(resolve => setTimeout(resolve, 10000));
-    
-    // Execute sell transaction using Jupiter - THIS EXECUTES A REAL SWAP
-    const sellResult = await swapWithJupiter(connection, keypair, {
-      tokenMint: botState.tokenMint,
-      amount,
-      isBuy: false,
-    });
-    
-    botState.transactions.push(sellResult);
-    
-    // Increment cycle counter
-    botState.cyclesCompleted++;
-    
-    // Update last action time
-    botState.lastActionTime = Date.now();
-    
-    // Notify about cycle completion
-    onCycleComplete(botState.wallet.id, botState.cyclesCompleted, false);
+    try {
+      // Execute buy transaction using Jupiter - THIS EXECUTES A REAL SWAP
+      console.log('Executing buy transaction...');
+      const buyResult = await swapWithJupiter(connection, keypair, {
+        tokenMint: botState.tokenMint,
+        amount,
+        isBuy: true,
+      });
+      
+      botState.transactions.push(buyResult);
+      
+      // Wait a bit between transactions
+      console.log('Waiting between transactions...');
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      
+      // Execute sell transaction using Jupiter - THIS EXECUTES A REAL SWAP
+      console.log('Executing sell transaction...');
+      const sellResult = await swapWithJupiter(connection, keypair, {
+        tokenMint: botState.tokenMint,
+        amount,
+        isBuy: false,
+      });
+      
+      botState.transactions.push(sellResult);
+      
+      // Increment cycle counter
+      botState.cyclesCompleted++;
+      
+      // Update last action time
+      botState.lastActionTime = Date.now();
+      
+      // Notify about cycle completion
+      onCycleComplete(botState.wallet.id, botState.cyclesCompleted, false);
+    } catch (swapError) {
+      console.error('Swap failed:', swapError);
+      toast.error(`Swap failed: ${swapError.message}`);
+      // Continue with the next cycle despite the error
+    }
     
     // Determine next interval
     let nextInterval;
