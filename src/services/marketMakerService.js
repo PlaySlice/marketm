@@ -1,4 +1,4 @@
-import { swapTokens, getTokenBalance } from './raydiumService';
+import { swapWithJupiter } from './jupiterService';
 import { getWalletBalance, generateRandomAmount, generateRandomInterval } from './walletService';
 import { toast } from 'react-toastify';
 import { Keypair } from '@solana/web3.js';
@@ -20,6 +20,11 @@ export function startMarketMaking(connection, wallet, globalSettings, onCycleCom
     const useCustomSettings = wallet.customSettings && wallet.customSettings.enabled;
     const effectiveSettings = useCustomSettings ? wallet.customSettings : globalSettings;
     const tokenMint = useCustomSettings ? wallet.customSettings.tokenMint : 'So11111111111111111111111111111111111111112';
+    
+    // Validate token mint
+    if (!tokenMint || tokenMint.trim() === '') {
+      throw new Error('Token mint address is required');
+    }
     
     // Initialize bot state
     const botState = {
@@ -111,26 +116,26 @@ async function executeTradeLoop(connection, keypair, botState, onCycleComplete, 
     
     console.log(`Executing trade cycle ${botState.cyclesCompleted + 1} for wallet ${botState.wallet.publicKey.slice(0, 8)}...`);
     
-    // Execute sell transaction
-    const sellResult = await swapTokens(connection, keypair, {
-      tokenMint: botState.tokenMint,
-      amount,
-      isBuy: false,
-    });
-    
-    botState.transactions.push(sellResult);
-    
-    // Wait a bit between transactions
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
-    // Execute buy transaction
-    const buyResult = await swapTokens(connection, keypair, {
+    // Execute buy transaction using Jupiter - THIS EXECUTES A REAL SWAP
+    const buyResult = await swapWithJupiter(connection, keypair, {
       tokenMint: botState.tokenMint,
       amount,
       isBuy: true,
     });
     
     botState.transactions.push(buyResult);
+    
+    // Wait a bit between transactions
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    
+    // Execute sell transaction using Jupiter - THIS EXECUTES A REAL SWAP
+    const sellResult = await swapWithJupiter(connection, keypair, {
+      tokenMint: botState.tokenMint,
+      amount,
+      isBuy: false,
+    });
+    
+    botState.transactions.push(sellResult);
     
     // Increment cycle counter
     botState.cyclesCompleted++;

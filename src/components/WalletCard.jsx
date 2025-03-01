@@ -81,6 +81,11 @@ function WalletCard({ wallet, onRecycle, onUpdate }) {
         throw new Error(`Insufficient balance. Minimum required: ${(minRequired * 2).toFixed(4)} SOL`);
       }
       
+      // Validate token mint address
+      if (customSettings.enabled && (!customSettings.tokenMint || customSettings.tokenMint.trim() === '')) {
+        throw new Error('Please enter a valid token mint address');
+      }
+      
       const result = startMarketMaking(
         connection, 
         wallet, 
@@ -313,6 +318,9 @@ function WalletCard({ wallet, onRecycle, onUpdate }) {
                     onChange={handleSettingsChange}
                     placeholder="Token mint address"
                   />
+                  <p className="mt-1 text-xs text-gray-400">
+                    Enter the token mint address you want to trade
+                  </p>
                 </div>
               </div>
               
